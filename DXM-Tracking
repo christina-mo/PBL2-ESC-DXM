@@ -1,0 +1,104 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.integrate as integrate
+from scipy.integrate import odeint
+
+#Physiological constants
+V_plasma = 3 #L
+V_csf = 0.15 #L
+
+#Constants for sigma 1 release rate function
+#baseline_fr = 1100  # pmol/min
+baseline_fr = 500 #µM/hour
+max_increase = 0.9*baseline_fr
+frmax = baseline_fr + max_increase
+
+#Dextromethorphan data
+dose_mg = 30
+dose_g = dose_mg/1e3
+dxm_mw = 271.4  # g/mol
+dose_mol = dose_g / dxm_mw
+dose_micromol = dose_mol * 1e6
+brain_plasma_ratio = 6.5 #ratio between brain concentration and plasma concentration
+C0_plasma = dose_micromol / V_plasma  # µM
+C0_brain = C0_plasma * brain_plasma_ratio  # µM
+ldose_mg = 15 #Parametric dose of DXM below therapeutic dose
+ldose_g = ldose_mg/1e3
+ldose_mol = ldose_g / dxm_mw
+ldose_micromol = ldose_mol * 1e6
+lC0_plasma = ldose_micromol / V_plasma  # µM
+lC0_brain = lC0_plasma * brain_plasma_ratio  # µM
+hdose_mg = 150 #max dose (dose of DXM above therapeutic dose)
+hdose_g = hdose_mg/1e3
+hdose_mol = hdose_g / dxm_mw
+hdose_micromol = hdose_mol * 1e6
+hC0_plasma = hdose_micromol / V_plasma  # µM
+hC0_brain = hC0_plasma * brain_plasma_ratio  # µM
+
+#Finding sigma 1 binding as a function of DXM concentration
+KdSigma = 0.0168 # binding constant (µM)
+def S1binding(Dex):
+  #Dex is given as µM
+  bound = Dex / (KdSigma + Dex) * 100 #Gives percent bound
+  return bound
+
+#Plotting binding as a function of DXM concentration
+plasma_dxm_array = np.linspace(0.0005, 0.1, 50) #in microM
+brain_dxm_array = brain_plasma_ratio * plasma_dxm_array
+plt.plot(brain_dxm_array, S1binding(brain_dxm_array), color='crimson', linewidth=2)
+#plt.set_title('a)')
+plt.xlabel('Brain DXM Concentration (µM)')
+plt.ylabel('Bound S1R (%)')
+plt.grid(True)
+plt.show()
+
+#Finding serotonin release rate as a function of sigma 1 binding
+def FR(Dex):
+  #dex concentration given in µM
+  fr = baseline_fr + max_increase * S1binding(Dex)/100 # in pmol/min
+  return(fr)
+
+#Converting release rate to pmol/min to µM/hr
+def convert_FR(FR):
+  fr_pmol_min = FR
+  fr_micromol_min = FR * 1e6
+  fr_micromol_hr = fr_micromol_min * 60
+  fr_micromolar_hr = fr_micromol_hr / V_csf
+  return fr_micromolar_hr
+
+#Plotting serotonin release rate as a function of DXM concentration
+#Plot 2 : DXM Concentration vs firing rate
+plt.plot(brain_dxm_array, FR(brain_dxm_array), color='crimson', linewidth=2, label = 'firing rate')
+plt.axhline(frmax, color='gray', linestyle='--', label='Vmax')
+#plt.set_title('b)')
+plt.xlabel('Brain DXM Concentration (µM)')
+plt.ylabel('Serotonin Release Rate (pmol/min)')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+#DXM decay
+half_life = 3  # hours
+kel = np.log(2) / half_life # first-order elimination constant
+# ODE for Plasma DXM Decay
+def plasma_decay_ode(C, t, kel):
+    return -kel * C
+#Time Array for Decay (0 to 72 hours)
+t = np.linspace(0, 72, 200)
+C_brain = odeint(plasma_decay_ode, C0_brain, t, args=(kel,)).flatten() # in pg/mL
+# Plot 3: Time-Dependent Brain DXM Decay
+plt.plot(t, C_brain, color='teal', linewidth=2)
+#plt.set_title('c)')
+plt.xlabel('Time (hours)')
+plt.ylabel('Brain DXM Concentration (µM)')
+plt.grid(True)
+plt.show()
+
+#Plotting serotonin release rate over time
+# Plot 4: Time-Dependent Serotonin release
+plt.plot(t, FR(C_brain), color='teal', linewidth=2)
+#plt.set_title('d)')
+plt.xlabel('Time (hours)')
+plt.ylabel('Serotonin Release Rate (pmol/min)')
+plt.grid(True)
+plt.show()
