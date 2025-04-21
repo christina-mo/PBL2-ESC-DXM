@@ -1,0 +1,87 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.integrate as integrate
+from scipy.integrate import odeint
+
+#SERT binding constants
+k1 = 6.3 * 3600 # µM⁻¹ hour⁻¹
+k_1 = 0.55 * 3600 # hour⁻¹
+kf = 104.3 * 3600 # hour⁻¹
+Kd_1 = k_1/k1
+k2 = 2 * 3600 #µM⁻¹ * hour⁻¹
+k_2 = 3600 * 1185 * 10**-6 #hour⁻¹
+Kd_2 = k_2/k2
+k3 = k2 * 0.1 #µM⁻¹ hour⁻¹ #MASSIVE ASSUMPTION --> assume that dex has lower affinity than SSRI
+k_3 = 400 * k3 # hour⁻¹ (Ki * Kf = Kr)
+Kd_3 = k_3/k3
+
+#Initial ligand concentrations
+iL1 = 0.0023 # µM #healthy is 0.00586 µM
+iL2 = nM_esc_brain_3/1e3 # µM
+iL3 = C0_brain # µM
+iL3 = C0_brain # µM
+iL3l = lC0_brain #uM
+iL3h = hC0_brain #uM
+
+#Determining SERT concentration
+Rn = (86*10**9) * (10000) # number of neurons  * number of serotonin receptors/neuron (loosely estimated)
+Rn_molar = Rn / (6.022 * 10**23)
+Rt_conc = Rn_molar / V_csf #mol/ml
+Rt = Rt_conc * 10**9 #micromolar
+
+#Determining initial free and bound ligand concentrations
+iR = Rt/(1 + iL2/Kd_2 + iL3/Kd_3) #initial free receptors
+iRl = Rt/(1 + iL2/Kd_2 + iL3l/Kd_3)
+iRh = Rt/(1 + iL2/Kd_2 + iL3h/Kd_3)
+iRL2  = iR*(iL2/Kd_2) #initial RL2 complexes
+iRL3  = iR*(iL3/Kd_3) #initial RL3 complexes
+iRL3l  = iR*(iL3l/Kd_3) #initial RL3 complexes
+iRL3h  = iR*(iL3h/Kd_3) #initial RL3 complexes
+
+#Differential equations for competitive binding
+def compBind(t, y):
+    R, RL1, RL2, RL3, L1, L2, L3 = y
+    #assuming serotonin is reuptaken as soon as it binds to R, so there are effectively no RL1 complexes.
+    dRL1 = 0
+    dRL2 = k2 * R * L2 - k_2 * RL2
+    dRL3 = k3 * R * L3 - k_3 * RL3
+    dR = - dRL2 - dRL3
+    #The rate of decrease in free receptors is equal to the rate of increase in RL2 and RL3 complexes
+    dL1 = - k1 * R * L1 + FR(L3)
+    #dL1 = - k1 * R * L1 +  #setting firing rate to match uptake
+    #print('firing: ' + str(convert_FR(FR(L3))))
+    #print('concentration: ' + str(L1))
+    #print('uptake: ' + str(k1 * R * L1)) # units:
+    dL2 = k_2 * RL2 - k2 * R * L2  # Assume SSRI steady state
+    dL3 = -kel * L3 - k3 * R * L3 + k_3 * RL3 #DXM concentration isnt constant we can include the ODE for dxm
+    return [dR, dRL1, dRL2, dRL3, dL1, dL2, dL3]
+
+#Running simulation for all treatments
+# Run simulation: No drugs
+sol_nodrugs = integrate.solve_ivp(compBind, [0,72], [iR, 0, iRL2, 0 , iL1, 0, 0], method ='LSODA', t_eval=t)
+
+# Run simulation: SSRI only
+sol_nodxm = integrate.solve_ivp(compBind, [0,72], [iR, 0, iRL2, 0,  iL1, iL2, 0], method ='LSODA', t_eval=t)
+
+# Run simulation: SSRI + DXM
+sol_dxm = integrate.solve_ivp(compBind, [0,72], [iR, 0, iRL2, iRL3, iL1, iL2, iL3], method ='LSODA', t_eval=t)
+
+# Run simulation: SSRI + Low DXM
+sol_ldxm = integrate.solve_ivp(compBind, [0,72], [iRl, 0, iRL2, iRL3l, iL1, iL2, iL3l], method ='LSODA', t_eval=t)
+
+# Run simulation: SSRI + High DXM
+sol_hdxm = integrate.solve_ivp(compBind, [0,72], [iRh, 0, iRL2, iRL3h, iL1, iL2, iL3h], method ='LSODA', t_eval=t)
+
+#Plot serotonin concentrations as a function of time for all treatments
+plt.plot(sol_nodrugs.t, sol_nodrugs.y[4], label='No Drugs', linestyle='-')
+#plt.plot(sol_nodxm.t, 0.5 * sol_nodxm.y[4], label='Low ESC dose only', linestyle='--', color='orange')
+plt.plot(sol_nodxm.t, sol_nodxm.y[4], label='Therapeutic ESC dose only', linestyle='-', color='orange')
+plt.plot(sol_ldxm.t, sol_ldxm.y[4], label='Therapeutic ESC + Low DXM', linestyle='--', color='blue')
+plt.plot(sol_dxm.t, sol_dxm.y[4], label='Therapeutic ESC + DXM', linestyle='-', color='green')
+plt.plot(sol_hdxm.t, sol_hdxm.y[4], label='Therapeutic ESC + High DXM', linestyle='--', color='red')
+plt.xlabel('Time (hours)')
+plt.ylabel('Free Serotonin (µM)')
+plt.title('Free serotonin concentration')
+plt.grid(True)
+plt.legend()
+plt.show()
