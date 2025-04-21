@@ -3,6 +3,16 @@ import matplotlib.pyplot as plt
 import scipy.integrate as integrate
 from scipy.integrate import odeint
 
+#Physiological constants
+V_plasma = 3 #L
+V_csf = 0.15 #L
+
+#Constants for sigma 1 release rate function
+#baseline_fr = 1100  # pmol/min
+baseline_fr = 5 #µM/hour
+max_increase = 0.9*baseline_fr
+frmax = baseline_fr + max_increase
+
 #SERT binding constants
 k1 = 6.3 * 3600 # µM⁻¹ hour⁻¹
 k_1 = 0.55 * 3600 # hour⁻¹
