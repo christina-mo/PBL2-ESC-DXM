@@ -9,7 +9,7 @@ V_csf = 0.15 #L
 
 #Constants for sigma 1 release rate function
 #baseline_fr = 1100  # pmol/min
-baseline_fr = 500 #µM/hour
+baseline_fr = 5 #µM/hour
 max_increase = 0.9*baseline_fr
 frmax = baseline_fr + max_increase
 
