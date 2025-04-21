@@ -74,6 +74,16 @@ sol_hdxm = integrate.solve_ivp(compBind, [0,72], [iRh, 0, iRL2, iRL3h, iL1, iL2,
 
 #Plot serotonin concentrations as a function of time for all treatments
 plt.plot(sol_nodrugs.t, sol_nodrugs.y[4], label='No Drugs', linestyle='-')
+plt.plot(sol_nodxm.t, sol_nodxm.y[4], label='ESC only', linestyle='-')
+plt.plot(sol_dxm.t, sol_dxm.y[4], label='ESC + DXM', linestyle='-')
+plt.xlabel('Time (hours)')
+plt.ylabel('Free Serotonin (µM)')
+plt.title('Free serotonin concentration')
+plt.grid(True)
+plt.legend()
+plt.show()
+
+plt.plot(sol_nodrugs.t, sol_nodrugs.y[4], label='No Drugs', linestyle='-')
 #plt.plot(sol_nodxm.t, 0.5 * sol_nodxm.y[4], label='Low ESC dose only', linestyle='--', color='orange')
 plt.plot(sol_nodxm.t, sol_nodxm.y[4], label='Therapeutic ESC dose only', linestyle='-', color='orange')
 plt.plot(sol_ldxm.t, sol_ldxm.y[4], label='Therapeutic ESC + Low DXM', linestyle='--', color='blue')
