@@ -1,0 +1,108 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.integrate as integrate
+from scipy.integrate import odeint
+
+#Constants used for ESC tracking
+Vd = 12 #Volume of distribution [L/kg]
+body_weight = 80 #average body weight of human man from North America [kg]
+ml_plasma = 3000 #volume of plasma [ml]
+g_brain = 1600 #mass of brain [g]
+esc_mm = 324.4 #molar mass of escitalopram [g/mol]
+csf = 150 #brain fluid [ml]
+
+
+#Set daily dose 
+intake = 20 #amount of escitalopram taken, daily [mg] #therapeutic
+#intake = 10 #amount of escitalopram taken, daily [mg] #low
+#intake = 30 #amount of escitalopram taken, daily [mg] #high
+
+
+#Determining ESC concentrations due to intake
+def C_esc_plasma(dose):
+  conc = dose * 1E6 / (Vd * body_weight * 1E3)
+  return conc
+
+#Concentration of escitalopram in the brain [ng/g]
+C_esc_brain = 3.2*C_esc_plasma(intake)
+
+#Escitalopram in plasma [ng]
+esc_plasma = C_esc_plasma(intake)*ml_plasma
+
+#Escitalopram in brain [ng]
+esc_brain = C_esc_brain*g_brain
+
+#MOLAR CONCENTRATION OF ESCITALOPRAM IN THE BRAIN
+mol_esc_brain = esc_brain * 1E-9 / esc_mm #[mol]
+nM_esc_brain_3 = 0.22*(mol_esc_brain/(csf*1E-3))*1E9
+print(f"nM Calc 3: {nM_esc_brain_3} nmol/L")
+
+#Brain and plasma concentration vs. intake
+drug_amt = np.linspace(0,35) #intake [mg]
+C_brain = np.zeros_like(drug_amt)
+C_plasma = np.zeros_like(drug_amt)
+
+for i, dose in enumerate(drug_amt):
+    C_plasma[i] = C_esc_plasma(dose)
+    C_brain[i] = 3.2 * C_plasma[i]
+
+#Creating plots
+#Figure 1 -- brain and plasma ESC concentrations
+C_brain = [33.33, 66.66, 99.99] #Esc concentration in brain ng/g #data parsed from above code
+C_plasma = [10.42, 20.83, 31.25] #Esc concentration in plasma ng/ml
+dose = ["10", "20", "30"] #mg/day
+fig, (brain, plasma) = plt.subplots(1, 2, figsize=(13,9), sharey=False)
+# Adjust spacing between subplots
+fig.subplots_adjust(wspace=0.01)
+
+#Brain concentration plot
+brain.bar(dose, C_brain, color='tab:blue')
+brain.yaxis.set_label_position("left")
+brain.yaxis.tick_left()
+brain.set_ylabel("Escitalopram Brain Concentration (ng/g)", fontsize = 21)
+brain.set_ylim(0, 105)
+brain.tick_params(axis='y', labelsize=17)
+
+#Plasma concentration plot
+plasma.bar(dose, C_plasma, color='tab:red')
+plasma.yaxis.set_label_position("right")
+plasma.yaxis.tick_right()
+plasma.set_ylabel("Escitalopram Plasma Concentration (ng/ml)", fontsize = 21)
+plasma.set_ylim(0, 105)
+plasma.tick_params(axis='y', labelsize=17)
+
+# Hide duplicate labels
+brain.set_xlabel("")  # no individual x labels
+plasma.set_xlabel("")
+brain.set_title("")   # no individual titles
+plasma.set_title("")
+
+# Set common x-ticks
+for ax in [brain, plasma]:
+    ax.set_xticks(dose)
+    ax.set_xticklabels([str(i) for i in dose], fontsize = 17)
+
+fig.text(0.5, 0.04, 'Escitalopram Dosage (mg/day)', ha='center', fontsize = 21 )
+plt.tight_layout(rect=[0, 0.05, 1, 0.95])
+plt.show()
+
+#Free serotonin as a function of ESC dose
+dose = [0, 10, 20, 30] #mg 
+sero = [0.004, 0.150, 0.321, 0.493] #micromolar (parsed from above code)
+
+# Plot
+plt.figure(figsize=(8, 6.5))  # Wider figure
+bar_width = 6               # Bar width in units (adjust as needed)
+plt.bar(dose, sero, width=bar_width, color='tab:blue')
+
+# Labels
+plt.ylabel('Free Serotonin Concentration (µM)', fontsize=20)
+plt.xlabel('Escitalopram Dosage (mg/day)', fontsize=20)
+plt.xticks(dose, fontsize = 16)  # Ensure all dose values are shown on x-axis
+plt.yticks(fontsize=16)
+
+# Add data labels above bars
+for i in range(len(dose)):
+    plt.text(dose[i], sero[i] + 0.005, f'{sero[i]:.3f}', ha='center', fontsize = 16)
+plt.tight_layout()
+plt.show()
